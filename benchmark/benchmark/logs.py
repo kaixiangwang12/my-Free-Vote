@@ -74,10 +74,13 @@ class LogParser:
         if search(r'Error', log) is not None:
             raise ParseError('Client(s) panicked')
 
+        print(log[:200])
         size = int(search(r'Transactions size: (\d+)', log).group(1))
+        print(1)
         rate = int(search(r'Transactions rate: (\d+)', log).group(1))
-
+        print(2)
         tmp = search(r'\[(.*Z) .* Start ', log).group(1)
+        print(3)
         start = self._to_posix(tmp)
 
         misses = len(findall(r'rate too high', log))

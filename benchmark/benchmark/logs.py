@@ -202,7 +202,7 @@ class LogParser:
             # f' Faults: {self.faults} nodes\n'
             f' Faults: {self.faults if self.faults == 0 else self.faults + 1} nodes\n'
             f' Committee size: {self.committee_size} nodes\n'
-            # f' Input rate: {sum(self.rate):,} tx/s\n'
+            f' Input rate: {sum(self.rate):,} tx/s\n'
             f' Transaction size: {self.size[0]:,} B\n'
             f' Execution time: {round(duration):,} s\n'
             '\n'

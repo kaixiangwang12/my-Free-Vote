@@ -233,7 +233,7 @@ class LogParser:
     @classmethod
     def process(cls, directory, faults):
         assert isinstance(directory, str)
-
+        print(directory)
         clients = []
         for filename in sorted(glob(join(directory, 'client-*.log'))):
             with open(filename, 'r') as f:

@@ -47,7 +47,7 @@ impl Timer1 {
     
     // 启动计时器
     pub fn start(&mut self, round: Round) {
-        debug!("Starting Timer1 for round {}", round);
+        info!("Starting Timer1 for round {}", round);
         self.round = round;
         self.start_time = Some(Instant::now());
     }
@@ -55,7 +55,7 @@ impl Timer1 {
     // 停止计时器
     pub fn stop(&mut self) {
         if self.start_time.is_some() {
-            debug!("Stopping Timer1 for round {}", self.round);
+            info!("Stopping Timer1 for round {}", self.round);
             self.start_time = None;
         }
     }
@@ -97,7 +97,7 @@ impl Timer2 {
     
     // 启动计时器
     pub fn start(&mut self, round: Round) {
-        debug!("Starting Timer2 for round {}", round);
+        info!("Starting Timer2 for round {}", round);
         self.round = round;
         self.start_time = Some(Instant::now());
     }
@@ -105,7 +105,7 @@ impl Timer2 {
     // 停止计时器
     pub fn stop(&mut self) {
         if self.start_time.is_some() {
-            debug!("Stopping Timer2 for round {}", self.round);
+            info!("Stopping Timer2 for round {}", self.round);
             self.start_time = None;
         }
     }
@@ -216,7 +216,7 @@ impl Core {
         });
     }
     async fn store_block(&mut self, block: &Block) {
-        debug!("Storing block {:?}", block);
+        info!("Storing block {:?}", block);
         // 检查是否已存在相同哈希的区块
         if !self.blocks.iter().any(|b| b.digest() == block.digest()) {
             self.blocks.push(block.clone());
@@ -230,16 +230,16 @@ impl Core {
             .cloned();
             
         if block.is_some() {
-            debug!("Found block with hash {}", hash);
+            info!("Found block with hash {}", hash);
         } else {
-            debug!("Block with hash {} not found", hash);
+            info!("Block with hash {} not found", hash);
         }
         
         Ok(block)
     }
     async fn has_block(&self, hash: &Digest) -> ConsensusResult<bool> {
         let exists = self.blocks.iter().any(|b| b.digest() == *hash);
-        debug!("Block with hash {} exists: {}", hash, exists);
+        info!("Block with hash {} exists: {}", hash, exists);
         Ok(exists)
     }
     async fn make_vote(&mut self, block: &Block) -> Option<Vote> {
@@ -268,13 +268,13 @@ impl Core {
                     info!("Committed {} -> {:?}", block, x);
                 }
             }
-            debug!("Committed {:?}", block);
+            info!("Committed {:?}", block);
             
             if let Err(e) = self.tx_commit.send(block).await {
                 warn!("Failed to send block through the commit channel: {}", e);
             }
-            if self.last_committed_round >= 10 {
-                let cleanup_threshold = self.last_committed_round - 10;
+            if self.last_committed_round >= 30 {
+                let cleanup_threshold = self.last_committed_round - 30;
                 self.blocks.retain(|block| block.round > cleanup_threshold);
             }
             // let initial_count = self.blocks.len();
@@ -286,7 +286,7 @@ impl Core {
         Ok(())
     }
     async fn send_block_to_requester(&mut self, block: &Block, requester: &PublicKey) {
-        debug!("Sending block {} to requester {}", block.digest(), requester);
+        info!("Sending block {} to requester {}", block.digest(), requester);
         
         // 获取请求者的网络地址
         let requester_address = self
@@ -306,18 +306,18 @@ impl Core {
                 .broadcast(vec![address], Bytes::from(message))
                 .await;
             
-            debug!("Block sent to requester {}", requester);
+            info!("Block sent to requester {}", requester);
         } else {
             warn!("No address found for requester {}", requester);
         }
     }
     async fn broadcast_vote_vector(&mut self) {
         if self.votes.is_empty() {
-            debug!("No votes to broadcast");
+            info!("No votes to broadcast");
             return;
         }
         
-        debug!("Broadcasting vector of {} votes", self.votes.len());
+        info!("Broadcasting vector of {} votes", self.votes.len());
         let votes = self.votes.clone();    
         for vote in &votes {
             let _ = self.handle_vote(vote).await;
@@ -339,11 +339,11 @@ impl Core {
         
         // 广播后清空投票向量
         self.votes.clear();
-        debug!("Vote vector cleared after broadcasting");
+        info!("Vote vector cleared after broadcasting");
     }
 
     async fn broadcast_certificates(&mut self, certificates: &Certificates) {
-        debug!("Broadcasting certificates for round {}", certificates.round);
+        info!("Broadcasting certificates for round {}", certificates.round);
         
         // 广播证书集合
         let addresses = self
@@ -363,7 +363,7 @@ impl Core {
 
     // 修改：广播precommit消息的方法，使用Precommit结构体
     async fn broadcast_precommit(&mut self, certificates: &Certificates, round: Round) {
-        debug!("Broadcasting precommit for round {}", round);
+        info!("Broadcasting precommit for round {}", round);
         
         // 创建Precommit对象
         let precommit = Precommit {
@@ -390,7 +390,7 @@ impl Core {
 
     // 修改：广播commit消息的方法
     async fn broadcast_commit(&mut self, certificates: &Certificates, round: Round) {
-        debug!("Broadcasting commit for round {}", round);
+        info!("Broadcasting commit for round {}", round);
         
         // 创建Commit对象
         let commit = Commit {
@@ -413,7 +413,7 @@ impl Core {
             .await;
     }
     async fn handle_vote_vector(&mut self, votes: &Vec<Vote>) -> ConsensusResult<()> {
-        debug!("Processing vote vector with {} votes", votes.len());
+        info!("Processing vote vector with {} votes", votes.len());
         
         // 逐一处理投票
         for vote in votes {
@@ -425,14 +425,14 @@ impl Core {
 
     #[async_recursion]
     async fn handle_vote(&mut self, vote: &Vote) -> ConsensusResult<()> {
-        debug!("Processing {:?}", vote);
+        info!("Processing {:?}", vote);
         
         // 验证投票
         vote.verify(&self.committee)?;
         
         // 添加投票并尝试合成证书
         if let Some(qc) = self.aggregator.add_vote(vote.clone())? {
-            debug!("Assembled {:?}", qc);
+            info!("Assembled {:?}", qc);
             
             // 将新证书添加到证书集合中
             self.qcs.push(qc);
@@ -441,7 +441,7 @@ impl Core {
         Ok(())
     }
     async fn broadcast_help_message(&mut self, help: help) -> ConsensusResult<()> {
-        debug!("Broadcasting help request for block {}", help.hash);
+        info!("Broadcasting help request for block {}", help.hash);
         
         let addresses: Vec<_> = self
             .committee
@@ -478,7 +478,7 @@ impl Core {
             selected
         };
         
-        debug!("Selected {} nodes out of {} available for help request", 
+        info!("Selected {} nodes out of {} available for help request", 
                selected_addresses.len(), 
                self.committee.broadcast_addresses(&self.name).len());  // 重新获取长度
         
@@ -495,11 +495,11 @@ impl Core {
     async fn handle_proposal(&mut self, block: &Block) -> ConsensusResult<()> {
         let digest = block.digest();
         if self.blocks.iter().any(|b| b.round == block.round && b.author == block.author) {
-            debug!("Ignoring duplicate block from author {} for round {} (already have one)", 
+            info!("Ignoring duplicate block from author {} for round {} (already have one)", 
                    block.author, block.round);
             return Ok(());
         }//检查是否一轮广播多个块
-        debug!("Processing proposal {:?}", block);
+        info!("Processing proposal {:?}", block);
         
         // 验证区块
         block.verify(&self.committee)?;
@@ -521,7 +521,7 @@ impl Core {
         
         // 为区块生成投票但不广播，而是存储到votes向量中
         if let Some(vote) = self.make_vote(block).await {
-            debug!("Created vote for block {} and stored it", block.round);
+            info!("Created vote for block {} and stored it", block.round);
             // 将投票存入votes向量而非立即广播
             if let Err(e) = self.handle_vote(&vote).await {
                 warn!("Failed to handle vote: {}", e);
@@ -535,11 +535,11 @@ impl Core {
             
             // 如果处理的区块数量超过委员会2/3，进入新轮次
             if blocks_in_round > (2 * self.committee.size() / 3) {
-                debug!("Processed over 2/3 blocks for round {}, moving to next round", self.round);
+                info!("Processed over 2/3 blocks for round {}, moving to next round", self.round);
                 
                 // 更新轮次
                 self.round += 1;
-                debug!("Moved to round {}", self.round);
+                info!("Moved to round {}", self.round);
                 
                 // 生成并广播新区块
                 self.generate_block().await;
@@ -552,7 +552,7 @@ impl Core {
                 //     debug!("As leader, broadcasting certificates for round {}", self.round - 1);
                 //     let certificates = Certificates::new(self.qcs.clone(), self.round - 1);
                 //     self.broadcast_certificates(&certificates).await;
-                debug!("Broadcasting certificates for round {} from node {}", self.round - 1, self.name);
+                info!("Broadcasting certificates for round {} from node {}", self.round - 1, self.name);
                 let certificates = Certificates::new(
                     self.qcs.clone(), 
                     self.round - 1, 
@@ -569,25 +569,25 @@ impl Core {
 
     // 修改处理证书集合的方法，改为发送precommit消息
     async fn handle_certificates(&mut self, certificates: &Certificates) -> ConsensusResult<()> {
-        debug!("Processing certificates for round {} from author {}", 
+        info!("Processing certificates for round {} from author {}", 
                certificates.round, certificates.author);
         if self.last_committed_round > certificates.round {
-                debug!("Skipping certificates: already committed round {} > certificates round {}", 
+                info!("Skipping certificates: already committed round {} > certificates round {}", 
                        self.last_committed_round, certificates.round);
                 return Ok(()); 
             }
         // 验证author是否为certificates.round轮次的leader
         let expected_leader = self.leader_elector.get_leader(certificates.round);
         if certificates.author != expected_leader {
-            debug!("Ignoring certificates from non-leader author {} for round {}, expected leader: {}", 
+            info!("Ignoring certificates from non-leader author {} for round {}, expected leader: {}", 
                    certificates.author, certificates.round, expected_leader);
             return Ok(()); // 直接返回，不处理
         }
         if self.time1.is_active() && self.time1.get_round() == certificates.round {
-            debug!("Stopping Timer1 for round {} as certificates received", certificates.round);
+            info!("Stopping Timer1 for round {} as certificates received", certificates.round);
             self.time1.stop();
         }
-        debug!("Certificates from valid leader {} for round {}", 
+        info!("Certificates from valid leader {} for round {}", 
                certificates.author, certificates.round);
             for qc in &certificates.certificates {
                 // 验证证书
@@ -601,7 +601,7 @@ impl Core {
             }
         }
         if !missing_blocks.is_empty() {
-            debug!("Requesting {} missing blocks", missing_blocks.len());
+            info!("Requesting {} missing blocks", missing_blocks.len());
                 
             for hash in &missing_blocks {
                 let help_msg = help {
@@ -614,7 +614,7 @@ impl Core {
         // 验证所有证书是否有效
         
         // 发送precommit消息而不是直接提交
-        debug!("Broadcasting precommit for certificates in round {}", certificates.round);
+        info!("Broadcasting precommit for certificates in round {}", certificates.round);
         self.broadcast_precommit(certificates, certificates.round).await;
         let precommit = Precommit {
             certificates: certificates.clone(),
@@ -633,11 +633,11 @@ impl Core {
         let round = precommit.round;
         let sender = precommit.author;
         if self.last_committed_round > round {
-            debug!("Skipping precommit: already committed round {} > precommit round {}", 
+            info!("Skipping precommit: already committed round {} > precommit round {}", 
                    self.last_committed_round, round);
             return Ok(()); 
         }
-        debug!("Processing precommit from {} for round {}", sender, round);
+        info!("Processing precommit from {} for round {}", sender, round);
         
         // 验证发送者
         // if !self.committee.exists(&sender) {
@@ -656,10 +656,10 @@ impl Core {
             // 检查当前precommit是否与已有的不同
             if precommit.certificates.digest() != first_precommit.certificates.digest()  {
                     if !self.time2.is_active() || self.time2.get_round() != round {
-                        debug!("Starting Timer2 for round {} due to conflicting precommits", round);
+                        info!("Starting Timer2 for round {} due to conflicting precommits", round);
                         self.time2.start(round);
                     }
-                debug!("Detected conflicting precommit for round {}: different certificates", round);
+                info!("Detected conflicting precommit for round {}: different certificates", round);
                 return Ok(());
                 }
             }
@@ -670,7 +670,7 @@ impl Core {
             
             // 检查是否收到足够多的precommit消息（超过2/3委员会数量）
             if round_precommits.len() > 2 * self.committee.size() / 3 {
-                debug!("Received over 2/3 precommits for round {}, generating commit", round);
+                info!("Received over 2/3 precommits for round {}, generating commit", round);
                 
                 // 使用第一个precommit中的证书集合（因为所有precommit应该包含相同的证书集合）
                 if let Some((_, first_precommit)) = round_precommits.iter().next() {
@@ -694,13 +694,13 @@ impl Core {
         Ok(())
     }
     async fn handle_commit(&mut self, certificates: &Certificates, round: Round) -> ConsensusResult<()> {
-        debug!("Processing commit for certificates in round {}", round);
+        info!("Processing commit for certificates in round {}", round);
         if self.time2.is_active() && self.time2.get_round() == round {
-            debug!("Stopping Timer2 for round {} as commit received", round);
+            info!("Stopping Timer2 for round {} as commit received", round);
             self.time2.stop();
         }
         if self.last_committed_round > certificates.round {
-            debug!("Skipping commit: already committed round {} > certificates round {}", 
+            info!("Skipping commit: already committed round {} > certificates round {}", 
                    self.last_committed_round, certificates.round);
             return Ok(()); 
         }//如果提交过，则直接返回
@@ -729,7 +729,7 @@ impl Core {
                 blocks_to_commit.push(block);
             }
             else {
-                debug!("Missing block for certificate, waiting for synchronization {}",qc.hash);
+                info!("Missing block for certificate, waiting for synchronization {}",qc.hash);
                 let help_msg = help {
                     hash: qc.hash.clone(),
                     author: self.name.clone(),
@@ -767,7 +767,7 @@ impl Core {
         // 注意：实际的区块会通过rx_loopback回到Core，然后在handle_proposal中处理和广播
     }
     async fn handle_help(&mut self, help_msg: &help) -> ConsensusResult<()> {
-        debug!("Processing help request from {} for block {}", 
+        info!("Processing help request from {} for block {}", 
                help_msg.author, help_msg.hash);
         
         // 在本地blocks向量中查找请求的区块
@@ -781,7 +781,7 @@ impl Core {
             info!("Successfully sent block {} to {}", 
                   help_msg.hash, help_msg.author);
         } else {
-            debug!("Don't have the requested block {} for {}", 
+            info!("Don't have the requested block {} for {}", 
                    help_msg.hash, help_msg.author);
         }
         
@@ -790,14 +790,14 @@ impl Core {
     async fn handle_timer1_timeout(&mut self) -> ConsensusResult<()> {
         let round = self.time1.get_round();
         if self.last_committed_round>round{
-            debug!("Skipping Timer1 timeout: already committed round {} > current round {}", 
+            info!("Skipping Timer1 timeout: already committed round {} > current round {}", 
                    self.last_committed_round, round);
             return Ok(()); 
         }
-        debug!("Timer1 timeout for round {}", round);
+        info!("Timer1 timeout for round {}", round);
         
         // 🔥 广播Time1消息，按照broadcast_commit的样式
-        debug!("Broadcasting Time1 message for round {}", round);
+        info!("Broadcasting Time1 message for round {}", round);
         
         let time1_msg = Time1::new(round, self.name);
         
@@ -824,14 +824,14 @@ impl Core {
     async fn handle_timer2_timeout(&mut self) -> ConsensusResult<()> {
         let round = self.time2.get_round();
     if self.last_committed_round > round {
-        debug!("Skipping Timer2 timeout: already committed round {} > current round {}", 
+        info!("Skipping Timer2 timeout: already committed round {} > current round {}", 
                self.last_committed_round, round);
         return Ok(()); 
     }
-    debug!("Timer2 timeout for round {}", round);
+    info!("Timer2 timeout for round {}", round);
     
     // 🔥 广播Time2消息
-    debug!("Broadcasting Time2 message for round {}", round);
+    info!("Broadcasting Time2 message for round {}", round);
     
     let time2_msg = Time2::new(round, self.name);
     
@@ -854,7 +854,7 @@ impl Core {
     Ok(())
     }
     async fn handle_time1(&mut self, time1: &Time1) -> ConsensusResult<()> {
-        debug!("Processing Time1 message for round {} from author {}", 
+        info!("Processing Time1 message for round {} from author {}", 
                time1.round, time1.author);
         
         // 验证author是否是有效的委员会成员
@@ -876,12 +876,12 @@ impl Core {
         
         let threshold = (2 * self.committee.size() / 3) + 1;
         
-        debug!("Collected {} Time1 messages for round {}, threshold: {}", 
+        info!("Collected {} Time1 messages for round {}, threshold: {}", 
                time1_count, time1.round, threshold);
         
         // 🔥 如果收集的Time1消息超过2/3阈值，广播TC1
         if time1_count > (2 * self.committee.size() / 3) {
-            debug!("Time1 messages exceed 2/3 threshold for round {}, broadcasting TC1", time1.round);
+            info!("Time1 messages exceed 2/3 threshold for round {}, broadcasting TC1", time1.round);
             
             // 广播TC1消息
             let tc1_msg = TC1::new(time1.round, self.name);
@@ -900,23 +900,23 @@ impl Core {
                 .broadcast(addresses, Bytes::from(message))
                 .await;
             
-            debug!("Broadcasted TC1 message for round {}", time1.round);
+            info!("Broadcasted TC1 message for round {}", time1.round);
             
             // 🔥 使last_commit_round++
             self.last_committed_round += 1;
             self.time2.stop();
-            debug!("Incremented last_commit_round to {}", self.last_committed_round);
+            info!("Incremented last_commit_round to {}", self.last_committed_round);
         }
         
         Ok(())
     }
     async fn handle_tc1(&mut self, tc1: &TC1) -> ConsensusResult<()> {
-        debug!("Processing TC1 message for round {} from author {}", 
+        info!("Processing TC1 message for round {} from author {}", 
                tc1.round, tc1.author);
         
         // 🔥 如果已经提交了更高的轮次，直接返回
         if self.last_committed_round > tc1.round {
-            debug!("Skipping TC1: already committed round {} > TC1 round {}", 
+            info!("Skipping TC1: already committed round {} > TC1 round {}", 
                    self.last_committed_round, tc1.round);
             return Ok(()); 
         }
@@ -929,7 +929,7 @@ impl Core {
         
         // 🔥 直接更新last_committed_round
         self.last_committed_round += 1;
-        debug!("Received TC1 from {}, incremented last_committed_round to {}", 
+        info!("Received TC1 from {}, incremented last_committed_round to {}", 
                tc1.author, self.last_committed_round);
         
         info!("Processed TC1 message from {} for round {}, last_committed_round now: {}", 
@@ -938,7 +938,7 @@ impl Core {
         Ok(())
     }
     async fn handle_time2(&mut self, time2: &Time2) -> ConsensusResult<()> {
-        debug!("Processing Time2 message for round {} from author {}", 
+        info!("Processing Time2 message for round {} from author {}", 
                time2.round, time2.author);
         
         // 验证author是否是有效的委员会成员
@@ -960,12 +960,12 @@ impl Core {
         
         let threshold = (2 * self.committee.size() / 3) + 1;
         
-        debug!("Collected {} Time2 messages for round {}, threshold: {}", 
+        info!("Collected {} Time2 messages for round {}, threshold: {}", 
                time2_count, time2.round, threshold);
         
         // 🔥 如果收集的Time2消息超过2/3阈值，广播TC2
         if time2_count > (2 * self.committee.size() / 3) {
-            debug!("Time2 messages exceed 2/3 threshold for round {}, broadcasting TC2", time2.round);
+            info!("Time2 messages exceed 2/3 threshold for round {}, broadcasting TC2", time2.round);
             
             // 广播TC2消息
             let tc2_msg = TC2::new(time2.round, self.name);
@@ -984,23 +984,23 @@ impl Core {
                 .broadcast(addresses, Bytes::from(message))
                 .await;
             
-            debug!("Broadcasted TC2 message for round {}", time2.round);
+            info!("Broadcasted TC2 message for round {}", time2.round);
             
             // 🔥 使last_committed_round++
             self.last_committed_round += 1;
             self.time2.stop();
-            debug!("Incremented last_committed_round to {}", self.last_committed_round);
+            info!("Incremented last_committed_round to {}", self.last_committed_round);
         }
         
         Ok(())
     }
     async fn handle_tc2(&mut self, tc2: &TC2) -> ConsensusResult<()> {
-        debug!("Processing TC2 message for round {} from author {}", 
+        info!("Processing TC2 message for round {} from author {}", 
                tc2.round, tc2.author);
         
         // 🔥 如果已经提交了更高的轮次，直接返回
         if self.last_committed_round > tc2.round {
-            debug!("Skipping TC2: already committed round {} > TC2 round {}", 
+            info!("Skipping TC2: already committed round {} > TC2 round {}", 
                    self.last_committed_round, tc2.round);
             return Ok(()); 
         }
@@ -1013,7 +1013,7 @@ impl Core {
         
         // 🔥 直接更新last_committed_round
         self.last_committed_round += 1;
-        debug!("Received TC2 from {}, incremented last_committed_round to {}", 
+        info!("Received TC2 from {}, incremented last_committed_round to {}", 
                tc2.author, self.last_committed_round);
         
         info!("Processed TC2 message from {} for round {}, last_committed_round now: {}", 
@@ -1034,12 +1034,12 @@ impl Core {
         // 主循环处理消息
         loop {
             if self.time1.is_active() && self.time1.is_timeout() {
-                debug!("Timer1 timeout detected for round {}", self.time1.get_round());
+                info!("Timer1 timeout detected for round {}", self.time1.get_round());
                 let _ = self.handle_timer1_timeout().await;
             }
             
             if self.time2.is_active() && self.time2.is_timeout() {
-                debug!("Timer2 timeout detected for round {}", self.time2.get_round());
+                info!("Timer2 timeout detected for round {}", self.time2.get_round());
                 let _ = self.handle_timer2_timeout().await;
             }
             let result = tokio::select! {

@@ -732,7 +732,7 @@ impl Core {
                     author: self.name.clone(),
                 };
                 self.broadcast_help_message(help_msg.clone()).await ?;
-                return Ok(());
+                // return Ok(());
             }
         }
         

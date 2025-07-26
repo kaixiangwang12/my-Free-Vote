@@ -176,6 +176,9 @@ impl Core {
         tx_proposer: Sender<ProposerMessage>,
         tx_commit: Sender<Block>,
     ) {
+        info!(
+            "core spawn successful",
+        );
         tokio::spawn(async move {
             Self {
                 name,
@@ -1020,6 +1023,9 @@ impl Core {
     // 主循环
     pub async fn run(&mut self) {
         // 启动时生成第一个区块
+        info!(
+            "run successful",
+        );
         self.generate_block().await;
 
         // 主循环处理消息

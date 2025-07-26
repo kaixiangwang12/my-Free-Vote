@@ -8,6 +8,7 @@ use crate::messages::{Block, Timeout, Vote, TC,QC};
 use crate::messages::{Precommit,Commit,Certificates,Time1,TC1,TC2,Time2,help};
 use crate::proposer::Proposer;
 use crate::synchronizer::Synchronizer;
+use std::{thread, time::Duration};
 use async_trait::async_trait;
 use bytes::Bytes;
 use crypto::{Digest, PublicKey, SignatureService};
@@ -87,7 +88,7 @@ impl Consensus {
             "Node {} listening to consensus messages on {}",
             name, address
         );
-
+        thread::sleep(Duration::from_millis(50));
         // Make the leader election module.
         let leader_elector = LeaderElector::new(committee.clone());
         info!(

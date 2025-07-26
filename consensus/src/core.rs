@@ -1027,7 +1027,9 @@ impl Core {
             "run successful",
         );
         self.generate_block().await;
-
+        info!(
+            "generate successful",
+        );
         // 主循环处理消息
         loop {
             if self.time1.is_active() && self.time1.is_timeout() {

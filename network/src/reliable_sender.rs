@@ -82,7 +82,7 @@ impl ReliableSender {
         let data_kb = data.len() as f64 / 1024.0;
         let total_kb = total_bytes as f64 / 1024.0;
         // info!("send: {:.3} KB ", total_kb);
-        info!("send: 542 KB ");
+        // info!("send: 542 KB ");
         let mut handlers = Vec::new();
         for address in addresses {
             let handler = self.send(address, data.clone()).await;

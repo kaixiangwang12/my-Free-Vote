@@ -756,6 +756,7 @@ impl Core {
 
     // 生成区块的函数
     async fn generate_block(&mut self) {
+        info!(Generating block for round {}", self.round);
         debug!("Generating block for round {}", self.round);
         // 向提案者发送创建区块的消息
         self.tx_proposer

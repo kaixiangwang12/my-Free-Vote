@@ -90,10 +90,14 @@ impl Consensus {
 
         // Make the leader election module.
         let leader_elector = LeaderElector::new(committee.clone());
-
+        info!(
+            "leader successful",
+        );
         // Make the mempool driver.
         let mempool_driver = MempoolDriver::new(store.clone(), tx_mempool, tx_loopback.clone());
-
+        info!(
+            "mempool successful",
+        );
         // Make the synchronizer.
         let synchronizer = Synchronizer::new(
             name,
@@ -102,7 +106,9 @@ impl Consensus {
             tx_loopback.clone(),
             parameters.sync_retry_delay,
         );
-
+        info!(
+            "sync successful",
+        );
         // Spawn the consensus core.
         Core::spawn(
             name,

@@ -124,6 +124,9 @@ impl Consensus {
             tx_proposer,
             tx_commit,
         );
+        info!(
+            "sync successful",
+        );
 
         // Spawn the block proposer.
         Proposer::spawn(
